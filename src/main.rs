@@ -113,11 +113,23 @@ fn main() {
     let stories_len = stories.len();
 
     let print_instant = Instant::now();
+
+    let re: Regex = Regex::new(&query).unwrap();
+
     for s in stories {
+        // TODO: check term supports ansi colors / isatty
+        // highlight with ansi colors
+        let title = re.replace_all(
+            s.title,
+            "\x1b[1m\x1b[31m${0}\x1b[0m"
+        );
+        // account for ansi codes in padding
+        let w = 80 + (title.len() - s.title.len());
+
         if s.comments > 0 {
-            println!("{:>4} {:<80} {}{}", s.comments, s.title, URL_START, s.id);
+            println!("{:>4} {:<width$} {}{}", s.comments, title, URL_START, s.id, width = w);
         } else {
-            println!("     {:<80} {}{}", s.title, URL_START, s.id);
+            println!("     {:<width$} {}{}", title, URL_START, s.id, width = w);
         }
         
     }
