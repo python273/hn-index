@@ -1,28 +1,31 @@
 #![feature(available_concurrency)]
 use std::thread;
 use std::env;
-// use std::fs;
+use std::io::Write;
+use std::error;
 use std::time::Instant;
 
 use regex::Regex;
-// use simdutf8::basic::from_utf8;
 
 
-static FILE: &str = include_str!("../titles.txt");
+static FILE: &[u8] = include_bytes!("../hn-index.bin");
 
 
 // const URL_START: &str = "https://news.ycombinator.com/item?id=";
 const URL_START: &str = "https://hkrn.ws/";
 
+/// Searches for the next FFFFFF marker
+fn find_next_item(b: &[u8], i: usize) -> Option<usize> {
+    let max = b.len() - 3;
 
-fn find_utf8_char_end(s: &str, i: usize) -> usize {
-    let mut end = i;
-    while !s.is_char_boundary(end) {
-        end += 1;
+    for i in i..max {
+        if b[i] == 255 && b[i + 1] == 255 && b[i + 2] == 255 {
+            return Some(i + 3);
+        }
     }
-    end
-}
 
+    None
+}
 
 #[derive(Debug)]
 struct Story<'a> {
@@ -31,7 +34,22 @@ struct Story<'a> {
     title: &'a str
 }
 
-fn main() {
+
+fn main() -> std::result::Result<(), Box<dyn error::Error>> {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+
+    /// Fixes piping
+    /// https://github.com/rust-lang/rust/issues/46016
+    macro_rules! println {
+        () => (
+            if let Err(_) = writeln!(handle) { return Ok(()); }
+        );
+        ($($arg:tt)*) => (
+            if let Err(_) = writeln!(handle, $($arg)*) { return Ok(()); }
+        );
+    }
+
     let total_instant = Instant::now();
 
     let query = env::args().nth(1).expect("Gimme text");
@@ -42,9 +60,7 @@ fn main() {
     };
 
     // let file_instant = Instant::now();
-    // let contents = &fs::read_to_string("./titles.txt").expect("FILE")[..];
     // let contents = fs::read("./titles.txt").expect("FILE");
-    // let contents = from_utf8(&contents).unwrap();
     let contents = FILE;
     // println!("{:<16}{}", "Char count", contents.len());
     // let file_elapsed = file_instant.elapsed();
@@ -71,29 +87,53 @@ fn main() {
         let handles: Vec<_> = (0..threads_num).into_iter().map(|x| {
             let start = last_end;
             let end = if x != max_thread_id { start + chunk_size } else { contents.len() };
-            let end = find_utf8_char_end(&contents, end);
-            let end = contents[..end].rfind('\n').unwrap();
+            let end = find_next_item(&contents, end).unwrap_or(contents.len());
 
-            last_end = end + 1;
+            last_end = end;
 
             let t_query = &query[..];
             let t_contents = &contents[start..end];
+            let end_rel = end - start;
 
             scope.spawn(move |_| {
                 let re: Regex = Regex::new(&t_query).unwrap();
 
-                t_contents
-                    .split('\n')
-                    .filter(|&s| u32::from_str_radix(&s[8..12], 16).unwrap() >= min_comments)
-                    .filter(|&s| re.is_match(&s[12..]))
-                    .map(|s| {
-                        let id = u32::from_str_radix(&s[0..8], 16).unwrap();
-                        let comments = u32::from_str_radix(&s[8..12], 16).unwrap();
-                        let title = &s[12..];
+                let mut stories: Vec<Story> = vec![];
+                let mut i;
+                let mut next_i: usize = 0;
 
-                        Story { id, comments, title }
-                    })
-                    .collect()
+                while next_i < end_rel {
+                    i = next_i;
+
+                    let title_len = t_contents[i] as usize;
+
+                    next_i += 1 + 2 + title_len + 4 + 3;
+
+                    let comments = u16::from_be_bytes([
+                        t_contents[i + 1],
+                        t_contents[i + 1 + 1]
+                    ]) as u32;
+                    if comments < min_comments { continue; }
+
+                    let title_i_start = i + 3;
+                    let title_i_end = i + 3 + title_len;
+
+                    let title: &str = unsafe {
+                        std::str::from_utf8_unchecked(&t_contents[title_i_start..title_i_end])
+                    };
+                    if !re.is_match(&title) { continue; }
+
+                    let id = u32::from_be_bytes([
+                        t_contents[title_i_end],
+                        t_contents[title_i_end + 1],
+                        t_contents[title_i_end + 2],
+                        t_contents[title_i_end + 3],
+                    ]);
+
+                    stories.push(Story { id, comments, title });
+                };
+
+                stories
             })
         }).collect();
 
@@ -141,4 +181,6 @@ fn main() {
     println!("{:<14}{:?}", "Scan time", scan_elapsed);
     println!("{:<14}{:?}", "Print time", print_elapsed);
     println!("{:<14}{:?}", "Total time", total_instant.elapsed());
+
+    Ok(())
 }

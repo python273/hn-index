@@ -12,5 +12,4 @@ lto = true
 
 [dependencies]
 crossbeam = "0.8"
-simdutf8 = { version = "0.1.1" }
 regex = "1.5"
