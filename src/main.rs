@@ -3,34 +3,29 @@ use std::thread;
 use std::env;
 use std::io::Write;
 use std::error;
+use std::fs;
 use std::time::Instant;
+use std::cmp;
 
 use regex::Regex;
 
+#[derive(Debug)]
+enum SortBy {
+    StoryId,
+    Comments
+}
+
+const CHECKPOINTS_COUNT: usize = 15;
 
 static FILE: &[u8] = include_bytes!("../hn-index.bin");
-
 
 // const URL_START: &str = "https://news.ycombinator.com/item?id=";
 const URL_START: &str = "https://hkrn.ws/";
 
-/// Searches for the next FFFFFF marker
-fn find_next_item(b: &[u8], i: usize) -> Option<usize> {
-    let max = b.len() - 3;
-
-    for i in i..max {
-        if b[i] == 255 && b[i + 1] == 255 && b[i + 2] == 255 {
-            return Some(i + 3);
-        }
-    }
-
-    None
-}
-
 #[derive(Debug)]
 struct Story<'a> {
     id: u32,
-    comments: u32,
+    comments: u16,
     title: &'a str
 }
 
@@ -39,7 +34,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
 
-    /// Fixes piping
+    /// Fixes piping error
     /// https://github.com/rust-lang/rust/issues/46016
     macro_rules! println {
         () => (
@@ -52,15 +47,32 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
     let total_instant = Instant::now();
 
-    let query = env::args().nth(1).expect("Gimme text");
+    let mut sort_by = SortBy::StoryId;
+    let mut pos_arg_i: usize = 0;
 
-    let min_comments = match env::args().nth(2) {
-        Some(s) => s.parse::<u32>().unwrap(),
-        _ => {0_u32}
+    for i in env::args().skip(1) {
+        if !i.starts_with("--") { break; }
+        pos_arg_i += 1;
+
+        match &i[..] {
+            "--comments" => {
+                sort_by = SortBy::Comments;
+            },
+            &_ => {
+                break
+            }
+        }
+    }
+
+    let query = env::args().nth(pos_arg_i + 1).expect("Gimme regex");
+
+    let min_comments = match env::args().nth(pos_arg_i + 2) {
+        Some(s) => s.parse::<u16>().unwrap(),
+        _ => {0_u16}
     };
 
     // let file_instant = Instant::now();
-    // let contents = fs::read("./titles.txt").expect("FILE");
+    // let contents = fs::read("hn-index.bin").expect("FILE");
     let contents = FILE;
     // println!("{:<16}{}", "Char count", contents.len());
     // let file_elapsed = file_instant.elapsed();
@@ -70,24 +82,36 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
             .unwrap_or_else(|_| std::num::NonZeroUsize::new(1).unwrap())
             .get()
     };
+    let threads_num = cmp::min(CHECKPOINTS_COUNT + 1, threads_num);
     // let threads_num: usize = 1;
     let max_thread_id: usize = threads_num - 1;
 
-    let chunk_size = contents.len() / threads_num;
     // println!("{:<16}{:?}", "avail threads", thread::available_concurrency());
     // println!("{:<16}{}", "threads_num", threads_num);
-    // println!("{:<16}{}", "chunk_size", chunk_size);
-    // println!("");
+
+    let mut checkpoints: [usize; CHECKPOINTS_COUNT] = [0; CHECKPOINTS_COUNT];
+    for i in 0..CHECKPOINTS_COUNT {
+        let a = i * 4;
+        checkpoints[i] = u32::from_be_bytes([
+            contents[a + 0],
+            contents[a + 1],
+            contents[a + 2],
+            contents[a + 3],
+        ]) as usize;
+    }
+
+    let skip_per_thread = (CHECKPOINTS_COUNT + 1) / threads_num;
 
     let scan_instant = Instant::now();
 
     let mut stories = crossbeam::scope(|scope| {
-        let mut last_end = 0;
+        let mut last_end = CHECKPOINTS_COUNT * 4;  // skipping checkpoints data
 
         let handles: Vec<_> = (0..threads_num).into_iter().map(|x| {
             let start = last_end;
-            let end = if x != max_thread_id { start + chunk_size } else { contents.len() };
-            let end = find_next_item(&contents, end).unwrap_or(contents.len());
+            let end = if x != max_thread_id {
+                checkpoints[(x + 1) * skip_per_thread - 1]
+            } else { contents.len() };
 
             last_end = end;
 
@@ -96,7 +120,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
             let end_rel = end - start;
 
             scope.spawn(move |_| {
-                let re: Regex = Regex::new(&t_query).unwrap();
+                let re: Regex = Regex::new(t_query).unwrap();
 
                 let mut stories: Vec<Story> = vec![];
                 let mut i;
@@ -107,21 +131,21 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
                     let title_len = t_contents[i] as usize;
 
-                    next_i += 1 + 2 + title_len + 4 + 3;
+                    next_i += 1 + 2 + title_len + 4;
 
                     let comments = u16::from_be_bytes([
                         t_contents[i + 1],
                         t_contents[i + 1 + 1]
-                    ]) as u32;
+                    ]);
                     if comments < min_comments { continue; }
 
-                    let title_i_start = i + 3;
-                    let title_i_end = i + 3 + title_len;
+                    let title_i_start = i + 1 + 2;
+                    let title_i_end = i + 1 + 2 + title_len;
 
                     let title: &str = unsafe {
                         std::str::from_utf8_unchecked(&t_contents[title_i_start..title_i_end])
                     };
-                    if !re.is_match(&title) { continue; }
+                    if !re.is_match(title) { continue; }
 
                     let id = u32::from_be_bytes([
                         t_contents[title_i_end],
@@ -146,7 +170,14 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
         stories
     }).unwrap();
 
-    stories.sort_by_key(|s| u32::MAX - s.id);
+    match sort_by {
+        SortBy::StoryId => {
+            stories.sort_by_key(|s| u32::MAX - s.id);
+        },
+        SortBy::Comments => {
+            stories.sort_by_key(|s| u16::MAX - s.comments);
+        }
+    }
 
     let scan_elapsed = scan_instant.elapsed();
 

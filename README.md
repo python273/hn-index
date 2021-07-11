@@ -1,8 +1,10 @@
 # hn-index
 
+Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.4/regex/index.html#syntax).
+
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_27045741.tar.gz
-$ tar xf hackernews-stories-dump-994369_27045741.tar.gz
+$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_27800535.tar.gz
+$ tar xf hackernews-stories-dump-994369_27800535.tar.gz
 $ cargo +nightly build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
@@ -16,13 +18,16 @@ Print time    25.479477ms
 Total time    40.747675ms
 ```
 
+`hn-index (regex) [min comments]`
+
 ![](./term.png)
 
 ## Dump
 
 Source: https://hn.algolia.com/api
 
-Format: `[title len; u8][comments num; u16 big endian][title; utf-8][id; u32 big endian]\xFF\xFF\xFF`
+Header: `[checkpoint; u32]*16` (used to find places to start scanning for each thread)
+Format: `[title len; u8][comments num; u16 big endian][title; utf-8][id; u32 big endian]`
 
 ## Bonus memes
 
