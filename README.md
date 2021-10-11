@@ -27,6 +27,7 @@ Total time    40.747675ms
 Source: https://hn.algolia.com/api
 
 Header: `[checkpoint; u32]*16` (used to find places to start scanning for each thread)
+
 Format: `[title len; u8][comments num; u16 big endian][title; utf-8][id; u32 big endian]`
 
 ## Bonus memes

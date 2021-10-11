@@ -1,4 +1,4 @@
-#![feature(available_concurrency)]
+#![feature(available_parallelism)]
 use std::thread;
 use std::env;
 use std::io::Write;
@@ -78,7 +78,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     // let file_elapsed = file_instant.elapsed();
 
     let threads_num: usize = {
-        thread::available_concurrency()
+        thread::available_parallelism()
             .unwrap_or_else(|_| std::num::NonZeroUsize::new(1).unwrap())
             .get()
     };
@@ -86,7 +86,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     // let threads_num: usize = 1;
     let max_thread_id: usize = threads_num - 1;
 
-    // println!("{:<16}{:?}", "avail threads", thread::available_concurrency());
+    // println!("{:<16}{:?}", "avail threads", thread::available_parallelism());
     // println!("{:<16}{}", "threads_num", threads_num);
 
     let mut checkpoints: [usize; CHECKPOINTS_COUNT] = [0; CHECKPOINTS_COUNT];
