@@ -3,8 +3,8 @@
 Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.4/regex/index.html#syntax).
 
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_27800535.tar.gz
-$ tar xf hackernews-stories-dump-994369_27800535.tar.gz
+$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_28872866.tar.gz
+$ tar xf hackernews-stories-dump-994369_28872866.tar.gz
 $ cargo +nightly build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
@@ -12,10 +12,10 @@ $ ./target/release/hn-index "\b[Rr]ust"
   45 Show HN: High-speed UTF-8 validation in Rust                                     https://hkrn.ws/26887438
 [...]
 
-Found stories 8009
-Scan time     15.228174ms
-Print time    25.479477ms
-Total time    40.747675ms
+Found stories 8923
+Scan time     16.251403ms
+Print time    27.237503ms
+Total time    43.549156ms
 ```
 
 `hn-index (regex) [min comments]`
