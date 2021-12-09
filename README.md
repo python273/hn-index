@@ -3,8 +3,8 @@
 Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.4/regex/index.html#syntax).
 
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_28872866.tar.gz
-$ tar xf hackernews-stories-dump-994369_28872866.tar.gz
+$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_29500235.tar.gz
+$ tar xf hackernews-stories-dump-994369_29500235.tar.gz
 $ cargo +nightly build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
@@ -26,9 +26,9 @@ Total time    43.549156ms
 
 Source: https://hn.algolia.com/api
 
-Header: `[checkpoint; u32]*16` (used to find places to start scanning for each thread)
+Header: `[checkpoint; u32 little endian]*31` (used to find places to start scanning for each thread)
 
-Format: `[title len; u8][comments num; u16 big endian][title; utf-8][id; u32 big endian]`
+Format: `[title len; u8][comments num; u16 little endian][title; utf-8][id; u32 little endian]`
 
 ## Bonus memes
 

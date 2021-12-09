@@ -15,7 +15,7 @@ enum SortBy {
     Comments
 }
 
-const CHECKPOINTS_COUNT: usize = 15;
+const CHECKPOINTS_COUNT: usize = 31;
 
 static FILE: &[u8] = include_bytes!("../hn-index.bin");
 
@@ -36,7 +36,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
     /// Fixes piping error
     /// https://github.com/rust-lang/rust/issues/46016
-    macro_rules! println {
+    macro_rules! xprintln {
         () => (
             if let Err(_) = writeln!(handle) { return Ok(()); }
         );
@@ -74,7 +74,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     // let file_instant = Instant::now();
     // let contents = fs::read("hn-index.bin").expect("FILE");
     let contents = FILE;
-    // println!("{:<16}{}", "Char count", contents.len());
+    // xprintln!("{:<16}{}", "Char count", contents.len());
     // let file_elapsed = file_instant.elapsed();
 
     let threads_num: usize = {
@@ -86,13 +86,13 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     // let threads_num: usize = 1;
     let max_thread_id: usize = threads_num - 1;
 
-    // println!("{:<16}{:?}", "avail threads", thread::available_parallelism());
-    // println!("{:<16}{}", "threads_num", threads_num);
+    // xprintln!("{:<16}{:?}", "avail threads", thread::available_parallelism());
+    // xprintln!("{:<16}{}", "threads_num", threads_num);
 
     let mut checkpoints: [usize; CHECKPOINTS_COUNT] = [0; CHECKPOINTS_COUNT];
     for i in 0..CHECKPOINTS_COUNT {
         let a = i * 4;
-        checkpoints[i] = u32::from_be_bytes([
+        checkpoints[i] = u32::from_le_bytes([
             contents[a + 0],
             contents[a + 1],
             contents[a + 2],
@@ -133,7 +133,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
                     next_i += 1 + 2 + title_len + 4;
 
-                    let comments = u16::from_be_bytes([
+                    let comments = u16::from_le_bytes([
                         t_contents[i + 1],
                         t_contents[i + 1 + 1]
                     ]);
@@ -147,7 +147,7 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
                     };
                     if !re.is_match(title) { continue; }
 
-                    let id = u32::from_be_bytes([
+                    let id = u32::from_le_bytes([
                         t_contents[title_i_end],
                         t_contents[title_i_end + 1],
                         t_contents[title_i_end + 2],
@@ -198,20 +198,20 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
         let w = 80 + (title.len() - s.title.len());
 
         if s.comments > 0 {
-            println!("{:>4} {:<width$} {}{}", s.comments, title, URL_START, s.id, width = w);
+            xprintln!("{:>4} {:<width$} {}{}", s.comments, title, URL_START, s.id, width = w);
         } else {
-            println!("     {:<width$} {}{}", title, URL_START, s.id, width = w);
+            xprintln!("     {:<width$} {}{}", title, URL_START, s.id, width = w);
         }
         
     }
     let print_elapsed = print_instant.elapsed();
 
-    println!();
-    println!("{:<14}{}", "Found stories", stories_len);
-    // println!("{:<14}{:?}", "Read time", file_elapsed);
-    println!("{:<14}{:?}", "Scan time", scan_elapsed);
-    println!("{:<14}{:?}", "Print time", print_elapsed);
-    println!("{:<14}{:?}", "Total time", total_instant.elapsed());
+    xprintln!();
+    xprintln!("{:<14}{}", "Found stories", stories_len);
+    // xprintln!("{:<14}{:?}", "Read time", file_elapsed);
+    xprintln!("{:<14}{:?}", "Scan time", scan_elapsed);
+    xprintln!("{:<14}{:?}", "Print time", print_elapsed);
+    xprintln!("{:<14}{:?}", "Total time", total_instant.elapsed());
 
     Ok(())
 }
