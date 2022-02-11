@@ -1,4 +1,3 @@
-#![feature(available_parallelism)]
 use std::thread;
 use std::env;
 use std::io::Write;
