@@ -3,8 +3,8 @@
 Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.4/regex/index.html#syntax).
 
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_30296252.tar.gz
-$ tar xf hackernews-stories-dump-994369_30296252.tar.gz
+$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_30749346.tar.gz
+$ tar xf hackernews-stories-dump-994369_30749346.tar.gz
 $ cargo +nightly build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
