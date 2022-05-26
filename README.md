@@ -1,11 +1,11 @@
 # hn-index
 
-Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.4/regex/index.html#syntax).
+Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.6/regex/index.html#syntax).
 
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_30749346.tar.gz
-$ tar xf hackernews-stories-dump-994369_30749346.tar.gz
-$ cargo +nightly build --release
+$ wget https://python273.keybase.pub/hackernews-stories-dump-994369_31514311.tar.gz
+$ tar xf hackernews-stories-dump-994369_31514311.tar.gz
+$ cargo build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
  101 Rust Language Cheat Sheet                                                        https://hkrn.ws/26930908
@@ -26,7 +26,7 @@ Total time    43.549156ms
 
 Source: https://hn.algolia.com/api
 
-Header: `[checkpoint; u32 little endian]*31` (used to find places to start scanning for each thread)
+Header: `[checkpoint; u32 little endian]*31` (offsets to start scanning by CPU threads)
 
 Format: `[title len; u8][comments num; u16 little endian][title; utf-8][id; u32 little endian]`
 
