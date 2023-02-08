@@ -19,7 +19,8 @@ const CHECKPOINTS_COUNT: usize = 31;
 static FILE: &[u8] = include_bytes!("../hn-index.bin");
 
 // const URL_START: &str = "https://news.ycombinator.com/item?id=";
-const URL_START: &str = "https://hkrn.ws/";
+// const URL_START: &str = "https://hkrn.ws/";
+const URL_START: &str = "https://hn.cns.wtf/#";
 
 #[derive(Debug)]
 struct Story<'a> {

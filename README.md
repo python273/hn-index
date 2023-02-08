@@ -1,10 +1,10 @@
 # hn-index
 
-Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.5.6/regex/index.html#syntax).
+Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.7.1/regex/index.html#syntax).
 
 ```
-$ wget https://python273.keybase.pub/hackernews-stories-dump-1_32792467.tar.gz
-$ tar xf hackernews-stories-dump-1_32792467.tar.gz
+$ wget https://python273.keybase.pub/hackernews-stories-dump-1_34704169.tar.gz
+$ tar xf hackernews-stories-dump-1_34704169.tar.gz
 $ cargo build --release
 $ ./target/release/hn-index "\b[Rr]ust"
 [...]
