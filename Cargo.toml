@@ -11,5 +11,4 @@ opt-level = 3
 lto = true
 
 [dependencies]
-crossbeam = "0.8"
-regex = "1.7"
+regex = "1.11"

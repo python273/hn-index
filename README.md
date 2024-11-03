@@ -3,10 +3,10 @@
 Search Hacker News stories' titles with [regex](https://docs.rs/regex/1.7.1/regex/index.html#syntax).
 
 ```
-$ wget https://python273.pw/hackernews-stories-dump-1_39617877.tar.gz
-$ tar xf hackernews-stories-dump-1_39617877.tar.gz
+$ wget https://python273.pw/hackernews-stories-dump-1_42024703.tar.gz
+$ tar xf hackernews-stories-dump-1_42024703.tar.gz
 $ cargo build --release
-$ ./target/release/hn-index "\b[Rr]ust"
+$ ./target/release/hn-index "(?i)\brust"
 [...]
  101 Rust Language Cheat Sheet                                                        https://hkrn.ws/26930908
   45 Show HN: High-speed UTF-8 validation in Rust                                     https://hkrn.ws/26887438

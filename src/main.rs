@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::thread;
 use std::env;
 use std::io::Write;
@@ -90,24 +91,21 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
     // xprintln!("{:<16}{}", "threads_num", threads_num);
 
     let mut checkpoints: [usize; CHECKPOINTS_COUNT] = [0; CHECKPOINTS_COUNT];
-    for i in 0..CHECKPOINTS_COUNT {
+    for (i, item) in checkpoints.iter_mut().enumerate() {
         let a = i * 4;
-        checkpoints[i] = u32::from_le_bytes([
-            contents[a + 0],
-            contents[a + 1],
-            contents[a + 2],
-            contents[a + 3],
-        ]) as usize;
+        *item = u32::from_le_bytes(contents[a..a+4].try_into().unwrap()) as usize;
     }
 
     let skip_per_thread = (CHECKPOINTS_COUNT + 1) / threads_num;
 
     let scan_instant = Instant::now();
 
-    let mut stories = crossbeam::scope(|scope| {
+    let query_re: Regex = Regex::new(&query).unwrap();
+
+    let mut stories: Vec<Story> = {
         let mut last_end = CHECKPOINTS_COUNT * 4;  // skipping checkpoints data
 
-        let handles: Vec<_> = (0..threads_num).into_iter().map(|x| {
+        let handles: Vec<_> = (0..threads_num).map(|x| {
             let start = last_end;
             let end = if x != max_thread_id {
                 checkpoints[(x + 1) * skip_per_thread - 1]
@@ -115,14 +113,12 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
             last_end = end;
 
-            let t_query = &query[..];
+            let re = query_re.clone();
             let t_contents = &contents[start..end];
             let end_rel = end - start;
 
-            scope.spawn(move |_| {
-                let re: Regex = Regex::new(t_query).unwrap();
-
-                let mut stories: Vec<Story> = vec![];
+            thread::spawn(move || {
+                let mut matched_stories: Vec<Story> = vec![];
                 let mut i;
                 let mut next_i: usize = 0;
 
@@ -133,42 +129,34 @@ fn main() -> std::result::Result<(), Box<dyn error::Error>> {
 
                     next_i += 1 + 2 + title_len + 4;
 
-                    let comments = u16::from_le_bytes([
-                        t_contents[i + 1],
-                        t_contents[i + 1 + 1]
-                    ]);
+                    let comments = u16::from_le_bytes(
+                        t_contents[i+1..i+3].try_into().unwrap());
                     if comments < min_comments { continue; }
 
                     let title_i_start = i + 1 + 2;
-                    let title_i_end = i + 1 + 2 + title_len;
+                    let title_i_end = title_i_start + title_len;
 
                     let title: &str = unsafe {
                         std::str::from_utf8_unchecked(&t_contents[title_i_start..title_i_end])
                     };
                     if !re.is_match(title) { continue; }
 
-                    let id = u32::from_le_bytes([
-                        t_contents[title_i_end],
-                        t_contents[title_i_end + 1],
-                        t_contents[title_i_end + 2],
-                        t_contents[title_i_end + 3],
-                    ]);
+                    let id = u32::from_le_bytes(
+                        t_contents[title_i_end..title_i_end+4].try_into().unwrap());
 
-                    stories.push(Story { id, comments, title });
+                    matched_stories.push(Story { id, comments, title });
                 };
 
-                stories
+                matched_stories
             })
         }).collect();
 
-        let mut stories: Vec<Story> = vec![];
+        handles.into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    };
 
-        for handle in handles {
-            stories.append(&mut handle.join().unwrap())
-        }
 
-        stories
-    }).unwrap();
 
     match sort_by {
         SortBy::StoryId => {
